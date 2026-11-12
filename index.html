@@ -30,9 +30,14 @@
   <h2 style="margin-top:0">Vagyon</h2>
   <p>Illeszd be az Apps Script webalkalmazás linkjét (<b>/exec</b>-re végződik):</p>
   <input id="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+  <p style="margin:6px 0 4px">Melyik Google-fiókkal nyíljon meg? <span style="color:#6b7280;font-size:13px">(ha több fiókkal vagy bejelentkezve; a sorrend a Google fiókváltójában látható)</span></p>
+  <select id="acc" style="width:100%;padding:12px;font-size:15px;border-radius:10px;border:1px solid #d1d5db;margin-bottom:10px">
+    <option value="">Csak egy fiókom van</option>
+    <option value="0">1. fiók</option><option value="1">2. fiók</option><option value="2">3. fiók</option><option value="3">4. fiók</option>
+  </select>
   <div id="err"></div>
   <button id="saveUrl">Mentés</button>
-  <p style="color:#6b7280;font-size:13px">A link csak ezen az eszközön tárolódik.</p>
+  <p style="color:#6b7280;font-size:13px">A link csak ezen az eszközön tárolódik. Később újra beállíthatod, ha a cím végére ezt írod: <b>?beallitas</b></p>
 </div>
 
 <script>
@@ -54,8 +59,19 @@
     f.onload = function () { document.getElementById('loading').style.display = 'none'; };
     document.body.appendChild(f);
   }
+  /** /macros/s/... → /macros/u/N/s/... (a kiválasztott Google-fiókkal nyílik meg) */
+  function withAccount(u, n) {
+    u = u.replace(/\/macros\/u\/\d+\//, '/macros/');
+    return n === '' ? u : u.replace('/macros/', '/macros/u/' + n + '/');
+  }
   var url = getUrl();
-  if (RE.test(url)) {
+  var reset = /[?&]beallitas/.test(location.search);
+  if (reset) {
+    var m = url.match(/\/macros\/u\/(\d+)\//);
+    document.getElementById('url').value = url.replace(/\/macros\/u\/\d+\//, '/macros/');
+    document.getElementById('acc').value = m ? m[1] : '';
+  }
+  if (!reset && RE.test(url)) {
     start(url);
   } else {
     document.getElementById('loading').style.display = 'none';
@@ -63,7 +79,9 @@
     document.getElementById('saveUrl').onclick = function () {
       var v = document.getElementById('url').value.trim();
       if (!RE.test(v)) { document.getElementById('err').textContent = 'Ez nem Apps Script /exec link.'; return; }
+      v = withAccount(v, document.getElementById('acc').value);
       try { localStorage.setItem(KEY, v); } catch (e) {}
+      if (reset) history.replaceState(null, '', location.pathname);
       document.getElementById('setup').style.display = 'none';
       document.getElementById('loading').style.display = 'grid';
       start(v);
